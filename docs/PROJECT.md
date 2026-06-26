@@ -4,7 +4,7 @@ This is a new WP CLI command I am making that allows a person to search and repl
 
 ## Background 
 I converted the `go-search-replace`  built by the WP team into PHP. 
-You can find my `php-search-replace` logic here: `./docs/references/php-search-replace.md` (21,453 tokens).
+You can find my `php-search-replace` logic here: `./docs/references/php-search-replace.md`.
 
 I have adapted this repo from an existing wp cli command: `search-replace-command`.
 
@@ -12,6 +12,10 @@ I have adapted this repo from an existing wp cli command: `search-replace-comman
 - https://github.com/AlextheYounga/php-search-replace
 - https://github.com/Automattic/go-search-replace
 - https://github.com/wp-cli/search-replace-command
+
+### Code2Prompt References
+- `./docs/references/php-search-replace.md` (21,453 tokens)
+- `./docs/references/search-replace-command` (41,740 tokens)
 
 You can also see some existing conversations I have been having with the WP CLI maintainers on Github, although I am unsure how helpful this may be.
 - https://github.com/wp-cli/search-replace-command/pull/235

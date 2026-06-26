@@ -2,7 +2,7 @@
 
 namespace WP_CLI;
 
-class File_Search_Replace_Command extends WP_CLI_Command {
+class File_Search_Replace_Command extends \WP_CLI_Command {
 
 	/**
 	 * Command entry point.
