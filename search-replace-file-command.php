@@ -6,11 +6,11 @@ if ( ! class_exists( 'WP_CLI' ) ) {
 
 require_once __DIR__ . '/src/SerializedReplaceResult.php';
 require_once __DIR__ . '/src/PhpSearchReplaceHandler.php';
-require_once __DIR__ . '/src/File_Search_Replace_Command.php';
+require_once __DIR__ . '/src/Search_Replace_File_Command.php';
 
 WP_CLI::add_command(
-	'file-search-replace',
-	'\WP_CLI\File_Search_Replace_Command',
+	'search-replace-file',
+	'\WP_CLI\Search_Replace_File_Command',
 	array(
 		'when' => 'before_wp_load',
 	)

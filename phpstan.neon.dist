@@ -2,7 +2,7 @@ parameters:
   level: 3
   paths:
     - src
-    - file-search-replace-command.php
+    - search-replace-file-command.php
   scanDirectories:
     - vendor/wp-cli/wp-cli/php
   scanFiles:

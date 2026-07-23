@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<ruleset name="WP-CLI-file-search-replace">
-	<description>Custom ruleset for WP-CLI file-search-replace-command</description>
+<ruleset name="WP-CLI-search-replace-file">
+	<description>Custom ruleset for WP-CLI search-replace-file-command</description>
 
 	<!--
 	#############################################################################

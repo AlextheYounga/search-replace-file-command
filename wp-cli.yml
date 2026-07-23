@@ -1,2 +1,2 @@
 require:
-  - file-search-replace-command.php
+  - search-replace-file-command.php

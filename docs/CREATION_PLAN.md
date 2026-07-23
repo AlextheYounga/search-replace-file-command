@@ -1,4 +1,4 @@
-# File Search Replace Command Creation Plan
+# Search Replace File Command Creation Plan
 
 ## Goal
 
@@ -8,13 +8,13 @@ The command will adapt the existing PHP port documented in `docs/references/php-
 
 ## Current Scaffold
 
-- `file-search-replace-command.php` registers `wp file-search-replace`.
-- `src/File_Search_Replace_Command.php` — command with implemented `__invoke()`.
+- `search-replace-file-command.php` registers `wp search-replace-file`.
+- `src/Search_Replace_File_Command.php` — command with implemented `__invoke()`.
 - `src/PhpSearchReplaceHandler.php` — PHP 7.2-safe port of the serialization-aware replacement engine.
 - `src/SerializedReplaceResult.php` — value object for serialized-string fix segments.
 - `tests/PhpSearchReplaceHandlerTest.php` — PHPUnit test covering full fixture matrix (50 assertions).
 - `tests/Fixtures/serialized/` — 12 pairs of `.input.sql` / `.expected.sql` files.
-- `features/file-search-replace.feature` — Behat acceptance tests for CLI behavior.
+- `features/search-replace-file.feature` — Behat acceptance tests for CLI behavior.
 - `composer.json` defines autoloading, bundled command, and test scripts.
 - `wp-cli.yml` loads the package locally.
 
@@ -62,15 +62,15 @@ Required adaptations:
 
 ```text
 src/
-  File_Search_Replace_Command.php
-  File_Search_Replace_Handler.php
+  Search_Replace_File_Command.php
+  Search_Replace_File_Handler.php
   Serialized_Replace_Result.php
 
 features/
-  file-search-replace.feature
+  search-replace-file.feature
 
 tests/
-  File_Search_Replace_Handler_Test.php
+  Search_Replace_File_Handler_Test.php
   Fixtures/
     serialized/
       ...
@@ -81,7 +81,7 @@ tests/
 ## First Command Interface
 
 ```bash
-wp file-search-replace <old> <new> <input-file> <output-file>
+wp search-replace-file <old> <new> <input-file> <output-file>
 ```
 
 All four arguments are positional and required:
@@ -94,8 +94,8 @@ All four arguments are positional and required:
 Examples:
 
 ```bash
-wp file-search-replace example.com example.test dump.sql dump-updated.sql
-wp file-search-replace http://example.com https://example.com input.sql output.sql
+wp search-replace-file example.com example.test dump.sql dump-updated.sql
+wp search-replace-file http://example.com https://example.com input.sql output.sql
 ```
 
 ## Deferred Features
@@ -119,7 +119,7 @@ These are deferred to future iterations:
 1. Ported reference handler to `src/PhpSearchReplaceHandler.php` (PHP 7.2-safe, under original `PhpSearchReplace` namespace).
 2. Added `src/SerializedReplaceResult.php` without PHP 8-only syntax.
 3. Added PHPUnit tests at `tests/PhpSearchReplaceHandlerTest.php` with all 12 serialized fixture pairs.
-4. Added minimum Behat scaffolding at `features/file-search-replace.feature`.
+4. Added minimum Behat scaffolding at `features/search-replace-file.feature`.
 5. Wired up `phpunit.xml.dist`, updated `phpstan.neon.dist`, configured phpcs ignores.
 6. Full `composer test` passes end-to-end.
 
@@ -137,7 +137,7 @@ Acceptance tests should cover:
 - Missing input file error.
 - Empty search value error.
 - Refusing to overwrite the input file (no `--in-place` in v1).
-- Help output via `wp help file-search-replace`.
+- Help output via `wp help search-replace-file`.
 
 ## Initial PHPUnit Coverage
 
@@ -163,7 +163,7 @@ Handler tests should cover:
 ## First Slice
 
 ```bash
-wp file-search-replace <old> <new> <input-file> <output-file>
+wp search-replace-file <old> <new> <input-file> <output-file>
 ```
 
 No flags beyond the 4 positional args. No `--in-place`, no counts, no streaming, no regex.

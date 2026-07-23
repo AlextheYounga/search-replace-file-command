@@ -8,7 +8,7 @@ use RuntimeException;
 /**
  * Performs serialization-aware search and replace on SQL dump files.
  */
-class File_Search_Replace_Command extends \WP_CLI_Command {
+class Search_Replace_File_Command extends \WP_CLI_Command {
 
 	/**
 	 * Performs serialization-aware search and replace on SQL dump files.
@@ -34,13 +34,13 @@ class File_Search_Replace_Command extends \WP_CLI_Command {
 	 * ## EXAMPLES
 	 *
 	 *     # Replace a domain name in a SQL dump.
-	 *     $ wp file-search-replace example.com example.test dump.sql dump-updated.sql
+	 *     $ wp search-replace-file example.com example.test dump.sql dump-updated.sql
 	 *
 	 *     # Replace a URL including protocol.
-	 *     $ wp file-search-replace http://example.com https://example.com input.sql output.sql
+	 *     $ wp search-replace-file http://example.com https://example.com input.sql output.sql
 	 *
 	 *     # Remove a string from a SQL dump (empty replacement).
-	 *     $ wp file-search-replace 'legacy-prefix' '' dump.sql dump-clean.sql
+	 *     $ wp search-replace-file 'legacy-prefix' '' dump.sql dump-clean.sql
 	 *
 	 * @param array<string> $args Positional arguments.
 	 * @param array<string, mixed> $assoc_args Associative arguments.

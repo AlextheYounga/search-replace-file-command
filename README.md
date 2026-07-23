@@ -1,4 +1,4 @@
-wp-cli/file-search-replace-command
+wp-cli/search-replace-file-command
 ==================================
 
 Scaffold for a file search/replace WP-CLI command.
@@ -6,7 +6,7 @@ Scaffold for a file search/replace WP-CLI command.
 ## Using
 
 ~~~
-wp file-search-replace
+wp search-replace-file
 ~~~
 
 ## Installing

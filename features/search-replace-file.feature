@@ -7,7 +7,7 @@ Feature: Search and replace strings in SQL dump files
 		  INSERT INTO wp_options VALUES (1, 'siteurl', 'http://example.com');
 		  INSERT INTO wp_options VALUES (2, 'home', 'http://example.com');
 		  """
-		When I run `wp file-search-replace http://example.com https://example.test dump.sql updated.sql`
+		When I run `wp search-replace-file http://example.com https://example.test dump.sql updated.sql`
 		Then STDOUT should contain:
 		  """
 		  Success: Replaced 'http://example.com' with 'https://example.test'.
@@ -24,7 +24,7 @@ Feature: Search and replace strings in SQL dump files
 		  """
 		  INSERT INTO wp_options VALUES (1, 'widget_text', 's:11:\"hello-world\";');
 		  """
-		When I run `wp file-search-replace hello goodbye dump.sql updated.sql`
+		When I run `wp search-replace-file hello goodbye dump.sql updated.sql`
 		Then the updated.sql file should be:
 		  """
 		  INSERT INTO wp_options VALUES (1, 'widget_text', 's:13:\"goodbye-world\";');
@@ -32,7 +32,7 @@ Feature: Search and replace strings in SQL dump files
 
 	Scenario: Error when input file is missing
 		Given an empty directory
-		When I try `wp file-search-replace old new missing.sql updated.sql`
+		When I try `wp search-replace-file old new missing.sql updated.sql`
 		Then STDERR should contain:
 		  """
 		  Error: Input file 'missing.sql' does not exist or is not readable.
@@ -45,7 +45,7 @@ Feature: Search and replace strings in SQL dump files
 		  """
 		  plain text
 		  """
-		When I try `wp file-search-replace '' new dump.sql updated.sql`
+		When I try `wp search-replace-file '' new dump.sql updated.sql`
 		Then STDERR should contain:
 		  """
 		  Error: <old> must not be empty.
@@ -58,7 +58,7 @@ Feature: Search and replace strings in SQL dump files
 		  """
 		  old text
 		  """
-		When I try `wp file-search-replace old new dump.sql dump.sql`
+		When I try `wp search-replace-file old new dump.sql dump.sql`
 		Then STDERR should contain:
 		  """
 		  Error: The input and output files must be different.
@@ -71,7 +71,7 @@ Feature: Search and replace strings in SQL dump files
 		  """
 		  old text
 		  """
-		When I try `wp file-search-replace old new dump.sql /dev/full`
+		When I try `wp search-replace-file old new dump.sql /dev/full`
 		Then STDERR should contain:
 		  """
 		  Error: Unable to write to "/dev/full".
@@ -83,8 +83,8 @@ Feature: Search and replace strings in SQL dump files
 		And the return code should be 1
 
 	Scenario: Help output documents the command arguments
-		When I run `wp help file-search-replace`
+		When I run `wp help search-replace-file`
 		Then STDOUT should contain:
 		  """
-		  wp file-search-replace <old> <new> <input-file> <output-file>
+		  wp search-replace-file <old> <new> <input-file> <output-file>
 		  """

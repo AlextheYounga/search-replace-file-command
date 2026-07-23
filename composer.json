@@ -1,8 +1,8 @@
 {
-    "name": "wp-cli/file-search-replace-command",
+    "name": "wp-cli/search-replace-file-command",
     "type": "wp-cli-package",
     "description": "Scaffold for a file search/replace WP-CLI command.",
-    "homepage": "https://github.com/wp-cli/file-search-replace-command",
+    "homepage": "https://github.com/wp-cli/search-replace-file-command",
     "license": "MIT",
     "authors": [
         {
@@ -36,7 +36,7 @@
         },
         "bundled": true,
         "commands": [
-            "file-search-replace"
+            "search-replace-file"
         ]
     },
     "autoload": {
@@ -44,7 +44,7 @@
             "src/"
         ],
         "files": [
-            "file-search-replace-command.php"
+            "search-replace-file-command.php"
         ]
     },
     "minimum-stability": "dev",
@@ -67,6 +67,6 @@
         ]
     },
     "support": {
-        "issues": "https://github.com/wp-cli/file-search-replace-command/issues"
+        "issues": "https://github.com/wp-cli/search-replace-file-command/issues"
     }
 }
