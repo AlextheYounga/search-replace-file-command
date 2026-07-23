@@ -9,10 +9,14 @@ The command will adapt the existing PHP port documented in `docs/references/php-
 ## Current Scaffold
 
 - `file-search-replace-command.php` registers `wp file-search-replace`.
-- `src/File_Search_Replace_Command.php` contains an empty `__invoke()` method.
-- `composer.json` already defines this as a bundled WP-CLI package and autoloads `src/`.
+- `src/File_Search_Replace_Command.php` — command with implemented `__invoke()`.
+- `src/PhpSearchReplaceHandler.php` — PHP 7.2-safe port of the serialization-aware replacement engine.
+- `src/SerializedReplaceResult.php` — value object for serialized-string fix segments.
+- `tests/PhpSearchReplaceHandlerTest.php` — PHPUnit test covering full fixture matrix (50 assertions).
+- `tests/Fixtures/serialized/` — 12 pairs of `.input.sql` / `.expected.sql` files.
+- `features/file-search-replace.feature` — Behat acceptance tests for CLI behavior.
+- `composer.json` defines autoloading, bundled command, and test scripts.
 - `wp-cli.yml` loads the package locally.
-- There are currently no `features/` or `tests/` directories.
 
 ## Core Logic To Adapt
 
@@ -74,13 +78,18 @@ tests/
 
 `Serialized_Replace_Result.php` could be folded into the handler file, but a separate class keeps autoloading and static analysis simpler.
 
-## Proposed First Command Interface
-
-Recommended initial interface:
+## First Command Interface
 
 ```bash
 wp file-search-replace <old> <new> <input-file> <output-file>
 ```
+
+All four arguments are positional and required:
+
+- `<old>` — search string (must be non-empty).
+- `<new>` — replacement string (may be empty).
+- `<input-file>` — path to input SQL dump file (must exist and be readable).
+- `<output-file>` — path to write the modified result (must differ from input; no `--in-place` in v1).
 
 Examples:
 
@@ -89,35 +98,12 @@ wp file-search-replace example.com example.test dump.sql dump-updated.sql
 wp file-search-replace http://example.com https://example.com input.sql output.sql
 ```
 
-Validation:
+## Deferred Features
 
-- `<old>` must be provided and non-empty.
-- `<new>` must be provided, but may be an empty string if supplied through `--new=''`.
-- `<input-file>` must exist and be readable.
-- `<output-file>` must be writable or creatable.
-- Input and output paths should not be the same unless an explicit `--in-place` option is added.
+These are deferred to future iterations:
 
-## Optional Interface Additions
-
-Potential options for the first or second iteration:
-
-```text
-[--old=<value>]
-[--new=<value>]
-[--in-place]
-[--format=<format>]
-```
-
-`--old` and `--new` are useful when values start with `--`, matching the existing `wp search-replace` pattern.
-
-`--in-place` would intentionally overwrite the input file. This should be opt-in because SQL dump changes are potentially destructive.
-
-`--format=count` would require the handler to count replacements. The current reference implementation does not report replacement counts.
-
-## Features To Defer
-
-These are useful but should not be part of the first minimal implementation unless explicitly required:
-
+- [--in-place]
+- [--format=<format>]
 - Regex replacement.
 - Dry runs.
 - Replacement count reporting.
@@ -128,17 +114,19 @@ These are useful but should not be part of the first minimal implementation unle
 
 ## Implementation Steps
 
-1. Port the reference handler into `src/File_Search_Replace_Handler.php` under the `WP_CLI` namespace.
-2. Add `src/Serialized_Replace_Result.php` without PHP 8-only syntax.
-3. Implement `File_Search_Replace_Command::__invoke()`.
-4. Add command PHPDoc with `OPTIONS` and `EXAMPLES` for WP-CLI help generation.
-5. Add argument validation and user-friendly `WP_CLI::error()` messages.
-6. Call the handler with one replacement pair.
-7. Emit a concise `WP_CLI::success()` message after writing the output file.
-8. Add Behat acceptance tests for CLI behavior.
-9. Add PHPUnit tests for the handler using selected serialized fixtures from the reference project.
-10. Update `README.md` or ensure the command docs can regenerate it later.
-11. Run `composer test` and fix lint, coding standards, PHPStan, PHPUnit, and Behat issues.
+### Completed
+
+1. Ported reference handler to `src/PhpSearchReplaceHandler.php` (PHP 7.2-safe, under original `PhpSearchReplace` namespace).
+2. Added `src/SerializedReplaceResult.php` without PHP 8-only syntax.
+3. Added PHPUnit tests at `tests/PhpSearchReplaceHandlerTest.php` with all 12 serialized fixture pairs.
+4. Added minimum Behat scaffolding at `features/file-search-replace.feature`.
+5. Wired up `phpunit.xml.dist`, updated `phpstan.neon.dist`, configured phpcs ignores.
+6. Full `composer test` passes end-to-end.
+
+### Remaining
+
+1. Expand Behat acceptance tests for CLI behavior (basic replacement, missing file, empty old, input=output error).
+2. Run `composer test` and fix any lint, phpcs, phpstan, phpunit, or behat issues.
 
 ## Initial Behat Coverage
 
@@ -148,8 +136,8 @@ Acceptance tests should cover:
 - Serialized string replacement and length recalculation.
 - Missing input file error.
 - Empty search value error.
-- Refusing to overwrite the input file without `--in-place`, if `--in-place` is implemented.
-- `--old` and `--new` handling for values beginning with hyphens, if those flags are implemented.
+- Refusing to overwrite the input file (no `--in-place` in v1).
+- Help output via `wp help file-search-replace`.
 
 ## Initial PHPUnit Coverage
 
@@ -164,22 +152,18 @@ Handler tests should cover:
 - Invalid replacement array shape raising an exception.
 - `replaceInFile()` processing an entire file.
 
-## Open Decisions
+## Decisions (Locked)
 
-1. Should the first version require `<output-file>`, or should it default to STDOUT?
-2. Should `--in-place` be included in the first version?
-3. Should `--old` and `--new` flags be included immediately for parity with `wp search-replace` argument edge cases?
-4. Should the first version expose replacement counts, or only report success/failure?
-5. How many reference fixtures should be copied into this package versus keeping a smaller focused fixture set?
+1. **`<output-file>` required?** Yes. Always require an explicit output path.
+2. **`--in-place` in v1?** No. Deferred to a future iteration. Input/output paths must differ.
+3. **`--old`/`--new` flags?** No. Follow the `wp search-replace 'old' 'new' [tables]` positional syntax.
+4. **Replacement counts?** No. v1 reports success/failure only. Count reporting is deferred.
+5. **Fixture set size?** All of them. The full 12-pair fixture set from the reference project is already copied into `tests/Fixtures/serialized/`.
 
-## Recommended First Slice
-
-Build the smallest useful command first:
+## First Slice
 
 ```bash
 wp file-search-replace <old> <new> <input-file> <output-file>
 ```
 
-Include `--old` and `--new` only if we want to handle hyphen-prefixed strings from the start.
-
-Skip `--in-place`, replacement counts, STDIN/STDOUT streaming, regex, and logging until the core command and handler tests are passing.
+No flags beyond the 4 positional args. No `--in-place`, no counts, no streaming, no regex.

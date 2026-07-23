@@ -188,6 +188,31 @@ class PhpSearchReplaceHandlerTest extends TestCase
         @unlink($output);
     }
 
+    public function testReplaceInFileThrowsWhenWritingFails(): void
+    {
+        if (!file_exists('/dev/full')) {
+            self::markTestSkipped('/dev/full is required to simulate a write failure.');
+        }
+
+        $input = tempnam(sys_get_temp_dir(), 'sql-src-');
+        self::assertNotFalse($input);
+
+        file_put_contents($input, "old text\n");
+
+        try {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('Unable to write to "/dev/full".');
+
+            $this->handler->replaceInFile(
+                $input,
+                '/dev/full',
+                [['from' => 'old', 'to' => 'new']]
+            );
+        } finally {
+            @unlink($input);
+        }
+    }
+
     private function extractSqlFixture(string $zipPath): string
     {
         if (!is_file($zipPath)) {

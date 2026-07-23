@@ -46,12 +46,16 @@ class PhpSearchReplaceHandler {
 
 		try {
 			while ( false !== ( $line = fgets( $input ) ) ) {
-				fwrite( $output, $this->processLine( $line, $normalized ) );
+				$this->writeToStream( $output, $this->processLine( $line, $normalized ), $outputPath );
 			}
 
 			$remainder = stream_get_contents( $input );
 			if ( false !== $remainder && '' !== $remainder ) {
-				fwrite( $output, $this->processLine( $remainder, $normalized ) );
+				$this->writeToStream( $output, $this->processLine( $remainder, $normalized ), $outputPath );
+			}
+
+			if ( ! @fflush( $output ) ) {
+				throw new RuntimeException( sprintf( 'Unable to write to "%s".', $outputPath ) );
 			}
 		} finally {
 			fclose( $input );
@@ -102,6 +106,23 @@ class PhpSearchReplaceHandler {
 		}
 
 		return $normalized;
+	}
+
+	/**
+	 * @param resource $stream
+	 */
+	private function writeToStream( $stream, string $contents, string $outputPath ): void {
+		$length  = strlen( $contents );
+		$written = 0;
+
+		while ( $written < $length ) {
+			$result = @fwrite( $stream, substr( $contents, $written ) );
+			if ( false === $result || 0 === $result ) {
+				throw new RuntimeException( sprintf( 'Unable to write to "%s".', $outputPath ) );
+			}
+
+			$written += $result;
+		}
 	}
 
 	/**
