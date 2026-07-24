@@ -162,6 +162,13 @@ class PhpSearchReplaceHandlerTest extends TestCase
         );
     }
 
+    public function testProcessLinePreservesEscapedSequenceAtEndOfSerializedValue(): void
+    {
+        $line = 's:2:\"a\\n\";';
+
+        self::assertSame($line, $this->handler->process_line($line, [['from' => 'missing', 'to' => 'replacement']]));
+    }
+
     public function testReplaceInFileProcessesEntireContents(): void
     {
         $input = tempnam(sys_get_temp_dir(), 'sql-src-');
