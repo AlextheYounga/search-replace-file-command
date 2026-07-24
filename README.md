@@ -1,80 +1,165 @@
-wp-cli/search-replace-file-command
-====================================
+# Search Replace File Command
 
-Performs serialization-aware search and replace on SQL dump files.
+Performs literal, serialization-aware search and replace on WordPress SQL dump files.
 
-Quick links: [Using](#using) | [Installing](#installing) | [Contributing](#contributing) | [Support](#support)
+Unlike `wp search-replace`, this command operates on an existing SQL dump rather than a live database. It reads one file, applies the replacement, repairs the byte-length declarations of affected serialized PHP strings, and writes the result to a separate output file.
 
-## Using
+> **Project status**
+>
+> This package is under development and is being prepared for possible contribution to the WP-CLI project. It is not currently included with WP-CLI and is not an official WP-CLI package.
 
-~~~
+## Installation
+
+Install the development version directly from GitHub:
+
+```bash
+wp package install https://github.com/AlextheYounga/search-replace-file-command.git
+```
+
+Confirm that the command is available:
+
+```bash
+wp help search-replace-file
+```
+
+## Usage
+
+```bash
 wp search-replace-file <old> <new> <input-file> <output-file>
-~~~
+```
 
-Searches through a SQL dump file and replaces appearances of the first string with the second string.
+The command performs a literal, case-sensitive replacement throughout the dump.
 
-The command correctly handles serialized PHP strings by recalculating their byte-length declarations after replacement. The input and output files must be different.
+It also recognizes serialized PHP strings in supported SQL dump syntax and recalculates their byte-length declarations when a replacement changes the length of their contents.
 
-**OPTIONS**
+### Arguments
 
-	<old>
-		A string to search for within the SQL file.
+#### `<old>`
 
-	<new>
-		Replace instances of the old string with this new string.
+The non-empty string to search for.
 
-	<input-file>
-		Path to the input SQL dump file.
+#### `<new>`
 
-	<output-file>
-		Path to write the modified SQL dump file.
+The replacement string. This may be empty.
 
-**EXAMPLES**
+#### `<input-file>`
 
-    # Replace a domain name in a SQL dump.
-    $ wp search-replace-file example.com example.test dump.sql dump-updated.sql
-    Success: Replaced 'example.com' with 'example.test'.
+The readable SQL dump to process.
 
-    # Replace a URL including protocol.
-    $ wp search-replace-file http://example.com https://example.com input.sql output.sql
+#### `<output-file>`
 
-    # Remove a string from a SQL dump (empty replacement).
-    $ wp search-replace-file 'legacy-prefix' '' dump.sql dump-clean.sql
+The path where the transformed dump will be written. The input and output paths must be different.
 
-## Installing
+## Examples
 
-This package is included with WP-CLI itself, no additional installation necessary.
+Replace a domain throughout a WordPress dump:
 
-To install the latest version of this package over what's included in WP-CLI, run:
+```bash
+wp search-replace-file \
+    'example.com' \
+    'example.test' \
+    dump.sql \
+    dump-updated.sql
+```
 
-    wp package install git@github.com:wp-cli/search-replace-file-command.git
+Replace a complete URL:
+
+```bash
+wp search-replace-file \
+    'http://example.com' \
+    'https://example.com' \
+    dump.sql \
+    dump-https.sql
+```
+
+Remove a string by replacing it with an empty value:
+
+```bash
+wp search-replace-file \
+    'legacy-prefix' \
+    '' \
+    dump.sql \
+    dump-clean.sql
+```
+
+Paths and values containing spaces should be quoted:
+
+```bash
+wp search-replace-file \
+    'Old Site Name' \
+    'New Site Name' \
+    'backups/old site.sql' \
+    'backups/new site.sql'
+```
+
+## Why use this command?
+
+A normal text replacement can corrupt PHP serialized values.
+
+For example, changing a string to a value with a different byte length requires the corresponding `s:<length>:` declaration to be updated. This command performs the replacement while repairing those declarations in supported WordPress SQL dump data.
+
+The command operates directly on files and does not require a live WordPress database.
+
+## Safety
+
+The input dump is not intentionally modified. A separate output path is required.
+
+The current development version may overwrite an existing file at the output path. Use a new output filename and retain the original dump until the transformed file has been tested successfully.
+
+Always inspect or test the resulting dump before importing it into a production database.
+
+## Compatibility and limitations
+
+This command is intended for WordPress SQL dumps using supported MySQL-style escaping and PHP serialization.
+
+Current limitations include:
+
+* Literal, case-sensitive replacement only.
+* One replacement pair per invocation.
+* No regular-expression mode.
+* No in-place modification.
+* No STDIN or STDOUT streaming interface.
+* No direct modification of a live database.
+
+For live WordPress databases, use the standard [`wp search-replace`](https://developer.wordpress.org/cli/commands/search-replace/) command instead.
+
+## Development
+
+Clone the repository and install its Composer dependencies:
+
+```bash
+git clone https://github.com/AlextheYounga/search-replace-file-command.git
+cd search-replace-file-command
+composer install
+```
+
+Run the complete test suite:
+
+```bash
+composer test
+```
+
+The test suite includes unit tests for the serialization-aware transformation engine and Behat tests for the WP-CLI command interface.
+
+## Attribution
+
+The serialization-aware transformation engine was adapted from [`AlextheYounga/php-search-replace`](https://github.com/AlextheYounga/php-search-replace), a PHP port based on Automattic's Go search-and-replace implementation.
 
 ## Contributing
 
-We appreciate you taking the initiative to contribute to this project.
+Bug reports and pull requests are welcome.
 
-Contributing isn't limited to just code. We encourage you to contribute in the way that best fits your abilities, by writing tutorials, giving a demo at your local meetup, helping other users with their support questions, or revising our documentation.
+Before reporting a bug, search the repository's existing issues. A useful report should include:
 
-For a more thorough introduction, [check out WP-CLI's guide to contributing](https://make.wordpress.org/cli/handbook/contributing/). This package follows those policy and guidelines.
+* The command that was run.
+* The relevant WP-CLI and PHP versions.
+* A minimal input fixture.
+* The expected output.
+* The actual output or error.
+* Whether the problem involves serialized data.
 
-### Reporting a bug
+Please do not include private production data, credentials, customer information, or a complete database dump in an issue.
 
-Think you've found a bug? We'd love for you to help us get it fixed.
+## License
 
-Before you create a new issue, you should [search existing issues](https://github.com/wp-cli/search-replace-file-command/issues?q=label%3Abug%20) to see if there's an existing resolution to it, or if it's already been fixed in a newer version.
-
-Once you've done a bit of searching and discovered there isn't an open or fixed issue for your bug, please [create a new issue](https://github.com/wp-cli/search-replace-file-command/issues/new). Include as much detail as you can, and clear steps to reproduce if possible. For more guidance, [review our bug report documentation](https://make.wordpress.org/cli/handbook/bug-reports/).
-
-### Creating a pull request
-
-Want to contribute a new feature? Please first [open a new issue](https://github.com/wp-cli/search-replace-file-command/issues/new) to discuss whether the feature is a good fit for the project.
-
-Once you've decided to commit the time to seeing your pull request through, [please follow our guidelines for creating a pull request](https://make.wordpress.org/cli/handbook/pull-requests/) to make sure it's a pleasant experience. See "[Setting up](https://make.wordpress.org/cli/handbook/pull-requests/#setting-up)" for details specific to working on this package locally.
-
-### License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Support
-
-GitHub issues aren't for general support questions. For support resources and next steps, see the WP-CLI Support page: https://make.wordpress.org/cli/handbook/support/
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
