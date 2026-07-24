@@ -4,11 +4,11 @@
 
 declare(strict_types=1);
 
-namespace PhpSearchReplace\Tests;
+namespace WP_CLI\Search_Replace_File\Tests;
 
-use PhpSearchReplace\PhpSearchReplaceHandler;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use WP_CLI\Search_Replace_File\PhpSearchReplaceHandler;
 
 class PhpSearchReplaceHandlerTest extends TestCase
 {
@@ -33,7 +33,7 @@ class PhpSearchReplaceHandlerTest extends TestCase
 			self::assertNotFalse( $input, $label . ': input fixture could not be read.' );
 			self::assertNotFalse( $expected, $label . ': expected fixture could not be read.' );
 
-			self::assertSame( $expected, $this->handler->processLine( $input, $replacements ), $label );
+			self::assertSame( $expected, $this->handler->process_line( $input, $replacements ), $label );
 		}
 	}
 
@@ -71,11 +71,6 @@ class PhpSearchReplaceHandlerTest extends TestCase
             'multiple occurrences on line' => [
                 $base . '/multiple-occurrences.input.sql',
                 $base . '/multiple-occurrences.expected.sql',
-                [['from' => 'http://automattic.com', 'to' => 'https://automattic.com']],
-            ],
-            'skip already replaced value' => [
-                $base . '/skip-updated.input.sql',
-                $base . '/skip-updated.expected.sql',
                 [['from' => 'http://automattic.com', 'to' => 'https://automattic.com']],
             ],
             'emoji from' => [
@@ -144,13 +139,27 @@ class PhpSearchReplaceHandlerTest extends TestCase
     public function testProcessLineWithEmptyReplacementsReturnsOriginal(): void
     {
         $line = 'plain text line';
-        self::assertSame($line, $this->handler->processLine($line, []));
+        self::assertSame($line, $this->handler->process_line($line, []));
     }
 
     public function testProcessLineRejectsInvalidReplacements(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->handler->processLine('anything', [['from' => 'only-from']]);
+        $this->handler->process_line('anything', [['from' => 'only-from']]);
+    }
+
+    public function testProcessLineRejectsMalformedSerializedData(): void
+    {
+        $input = file_get_contents(__DIR__ . '/Fixtures/serialized/skip-updated.input.sql');
+        self::assertNotFalse($input);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('faulty serialized data');
+
+        $this->handler->process_line(
+            $input,
+            [['from' => 'http://automattic.com', 'to' => 'https://automattic.com']]
+        );
     }
 
     public function testReplaceInFileProcessesEntireContents(): void
@@ -169,7 +178,7 @@ class PhpSearchReplaceHandlerTest extends TestCase
 
         file_put_contents($input, $fixture);
 
-        $this->handler->replaceInFile($input, $output, [
+        $this->handler->replace_in_file($input, $output, [
             ['from' => 'http://automattic.com', 'to' => 'https://automattic.com'],
             ['from' => 'http://example.com', 'to' => 'https://example.com'],
         ]);
@@ -201,9 +210,9 @@ class PhpSearchReplaceHandlerTest extends TestCase
 
         try {
             $this->expectException(RuntimeException::class);
-            $this->expectExceptionMessage('Unable to write to "/dev/full".');
+            $this->expectExceptionMessage('Unable to replace "/dev/full".');
 
-            $this->handler->replaceInFile(
+            $this->handler->replace_in_file(
                 $input,
                 '/dev/full',
                 [['from' => 'old', 'to' => 'new']]

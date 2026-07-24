@@ -1,10 +1,8 @@
 <?php
 
-// phpcs:ignoreFile
-
 declare( strict_types=1 );
 
-namespace PhpSearchReplace;
+namespace WP_CLI\Search_Replace_File;
 
 use RuntimeException;
 
@@ -19,48 +17,133 @@ class PhpSearchReplaceHandler {
 	 *
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	public function replaceInFile( string $inputPath, string $outputPath, array $replacements ): void {
-		$normalized = $this->normalizeReplacements( $replacements );
-		if ( [] === $normalized ) {
-			if ( $inputPath === $outputPath ) {
-				return;
-			}
+	public function replace_in_file( string $input_path, string $output_path, array $replacements ): void {
+		$normalized = $this->normalize_replacements( $replacements );
 
-			if ( ! copy( $inputPath, $outputPath ) ) {
-				throw new RuntimeException( sprintf( 'Unable to copy "%s" to "%s".', $inputPath, $outputPath ) );
-			}
-
-			return;
+		if ( $this->paths_refer_to_same_file( $input_path, $output_path ) ) {
+			throw new RuntimeException( 'The input and output files must be different.' );
 		}
 
-		$input = @fopen( $inputPath, 'rb' );
+		$input = @fopen( $input_path, 'rb' );
 		if ( false === $input ) {
-			throw new RuntimeException( sprintf( 'Unable to open "%s" for reading.', $inputPath ) );
+			throw new RuntimeException( sprintf( 'Unable to open "%s" for reading.', $input_path ) );
 		}
 
-		$output = @fopen( $outputPath, 'wb' );
+		$output_directory = realpath( dirname( $output_path ) );
+		if ( false === $output_directory ) {
+			fclose( $input );
+			throw new RuntimeException( sprintf( 'Unable to access the output directory for "%s".', $output_path ) );
+		}
+
+		$temporary_path = tempnam( $output_directory, '.search-replace-file-' );
+		if ( false === $temporary_path ) {
+			fclose( $input );
+			throw new RuntimeException( sprintf( 'Unable to create a temporary file for "%s".', $output_path ) );
+		}
+
+		$output = @fopen( $temporary_path, 'wb' );
 		if ( false === $output ) {
 			fclose( $input );
-			throw new RuntimeException( sprintf( 'Unable to open "%s" for writing.', $outputPath ) );
+			unlink( $temporary_path );
+			throw new RuntimeException( sprintf( 'Unable to create a temporary file for "%s".', $output_path ) );
 		}
 
 		try {
-			while ( false !== ( $line = fgets( $input ) ) ) {
-				$this->writeToStream( $output, $this->processLine( $line, $normalized ), $outputPath );
+			$line_number = 0;
+			while ( true ) {
+				$line = fgets( $input );
+				if ( false === $line ) {
+					break;
+				}
+
+				++$line_number;
+
+				try {
+					$processed_line = $this->process_line( $line, $normalized );
+				} catch ( RuntimeException $exception ) {
+					throw new RuntimeException(
+						sprintf(
+							'Unable to safely process serialized data in "%s" at line %d. %s',
+							$input_path,
+							$line_number,
+							$exception->getMessage()
+						),
+						0,
+						$exception
+					);
+				}
+
+				$this->write_to_stream( $output, $processed_line, $output_path );
 			}
 
-			$remainder = stream_get_contents( $input );
-			if ( false !== $remainder && '' !== $remainder ) {
-				$this->writeToStream( $output, $this->processLine( $remainder, $normalized ), $outputPath );
+			if ( ! feof( $input ) ) {
+				throw new RuntimeException( sprintf( 'Unable to read from "%s".', $input_path ) );
 			}
 
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- The failure is converted to a command error.
 			if ( ! @fflush( $output ) ) {
-				throw new RuntimeException( sprintf( 'Unable to write to "%s".', $outputPath ) );
+				throw new RuntimeException( sprintf( 'Unable to write to "%s".', $output_path ) );
 			}
-		} finally {
+
 			fclose( $input );
+			$input = null;
+
 			fclose( $output );
+			$output = null;
+
+			if ( ! @rename( $temporary_path, $output_path ) ) {
+				throw new RuntimeException( sprintf( 'Unable to replace "%s".', $output_path ) );
+			}
+
+			$temporary_path = null;
+		} finally {
+			if ( is_resource( $input ) ) {
+				fclose( $input );
+			}
+
+			if ( is_resource( $output ) ) {
+				fclose( $output );
+			}
+
+			if ( null !== $temporary_path && file_exists( $temporary_path ) ) {
+				unlink( $temporary_path );
+			}
 		}
+	}
+
+	/**
+	 * Determine whether two paths resolve to the same file.
+	 */
+	public function paths_refer_to_same_file( string $input_path, string $output_path ): bool {
+		$input_real_path = realpath( $input_path );
+		if ( false === $input_real_path ) {
+			return false;
+		}
+
+		$output_real_path = realpath( $output_path );
+		if ( false !== $output_real_path && $input_real_path === $output_real_path ) {
+			return true;
+		}
+
+		if ( false === $output_real_path ) {
+			$output_directory = realpath( dirname( $output_path ) );
+			if ( false !== $output_directory ) {
+				$output_real_path = $output_directory . DIRECTORY_SEPARATOR . basename( $output_path );
+				if ( $input_real_path === $output_real_path ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		$input_stat  = stat( $input_path );
+		$output_stat = stat( $output_path );
+
+		return false !== $input_stat
+			&& false !== $output_stat
+			&& $input_stat['dev'] === $output_stat['dev']
+			&& $input_stat['ino'] === $output_stat['ino'];
 	}
 
 	/**
@@ -68,24 +151,24 @@ class PhpSearchReplaceHandler {
 	 *
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	public function processLine( string $line, array $replacements ): string {
+	public function process_line( string $line, array $replacements ): string {
 		if ( '' === $line ) {
 			return '';
 		}
 
-		$normalized = $this->normalizeReplacements( $replacements );
+		$normalized = $this->normalize_replacements( $replacements );
 		if ( [] === $normalized ) {
 			return $line;
 		}
 
-		return $this->fixLine( $line, $normalized );
+		return $this->fix_line( $line, $normalized );
 	}
 
 	/**
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 * @return array<int, array{from:string,to:string}>
 	 */
-	private function normalizeReplacements( array $replacements ): array {
+	private function normalize_replacements( array $replacements ): array {
 		$normalized = array();
 		foreach ( $replacements as $replacement ) {
 			if ( ! is_array( $replacement ) || ! isset( $replacement['from'], $replacement['to'] ) ) {
@@ -111,14 +194,15 @@ class PhpSearchReplaceHandler {
 	/**
 	 * @param resource $stream
 	 */
-	private function writeToStream( $stream, string $contents, string $outputPath ): void {
+	private function write_to_stream( $stream, string $contents, string $output_path ): void {
 		$length  = strlen( $contents );
 		$written = 0;
 
 		while ( $written < $length ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- The failure is converted to a command error.
 			$result = @fwrite( $stream, substr( $contents, $written ) );
 			if ( false === $result || 0 === $result ) {
-				throw new RuntimeException( sprintf( 'Unable to write to "%s".', $outputPath ) );
+				throw new RuntimeException( sprintf( 'Unable to write to "%s".', $output_path ) );
 			}
 
 			$written += $result;
@@ -128,22 +212,17 @@ class PhpSearchReplaceHandler {
 	/**
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	private function fixLine( string $line, array $replacements ): string {
-		$linePart = $line;
-		$rebuilt  = '';
+	private function fix_line( string $line, array $replacements ): string {
+		$line_part = $line;
+		$rebuilt   = '';
 
-		while ( '' !== $linePart ) {
-			try {
-				$result = $this->fixLineWithSerializedData( $linePart, $replacements );
-			} catch ( RuntimeException $exception ) {
-				$rebuilt .= $linePart;
-				break;
-			}
+		while ( '' !== $line_part ) {
+			$result = $this->fix_line_with_serialized_data( $line_part, $replacements );
 
-			$rebuilt .= $result->pre . $result->serializedPortion;
-			$linePart = $result->post;
+			$rebuilt  .= $result->pre . $result->serialized_portion;
+			$line_part = $result->post;
 
-			if ( '' === $linePart ) {
+			if ( '' === $line_part ) {
 				break;
 			}
 		}
@@ -154,75 +233,76 @@ class PhpSearchReplaceHandler {
 	/**
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	private function fixLineWithSerializedData( string $linePart, array $replacements ): SerializedReplaceResult {
-		$prefix = $this->findSerializedPrefix( $linePart );
+	private function fix_line_with_serialized_data( string $line_part, array $replacements ): SerializedReplaceResult {
+		$prefix = $this->find_serialized_prefix( $line_part );
 
 		if ( null === $prefix ) {
-			return new SerializedReplaceResult( $this->replaceByPart( $linePart, $replacements ), '', '' );
+			return new SerializedReplaceResult( $this->replace_by_part( $line_part, $replacements ), '', '' );
 		}
 
-		$pre = substr( $linePart, 0, $prefix['start'] );
-		$pre = $this->replaceByPart( $pre, $replacements );
+		$pre = substr( $line_part, 0, $prefix['start'] );
+		$pre = $this->replace_by_part( $pre, $replacements );
 
-		$originalByteSize  = (int) $prefix['raw_length'];
-		$contentStartIndex = $prefix['content_start'];
+		$original_byte_size  = (int) $prefix['raw_length'];
+		$content_start_index = $prefix['content_start'];
 
-		$currentContentIndex = $contentStartIndex;
-		$contentByteCount    = 0;
-		$contentEndIndex     = 0;
-		$nextSliceIndex      = null;
-		$nextSliceFound      = false;
-		$maxIndex            = strlen( $linePart ) - 1;
+		$current_content_index = $content_start_index;
+		$content_byte_count    = 0;
+		$content_end_index     = 0;
+		$next_slice_index      = null;
+		$next_slice_found      = false;
+		$line_part_length      = strlen( $line_part );
+		$max_index             = $line_part_length - 1;
 
-		while ( $currentContentIndex < strlen( $linePart ) ) {
-			if ( $currentContentIndex + 2 > $maxIndex ) {
+		while ( $current_content_index < $line_part_length ) {
+			if ( $current_content_index + 2 > $max_index ) {
 				throw new RuntimeException( 'faulty serialized data: out-of-bound index access detected' );
 			}
 
-			$char       = $linePart[ $currentContentIndex ];
-			$secondChar = $linePart[ $currentContentIndex + 1 ];
-			$thirdChar  = $linePart[ $currentContentIndex + 2 ];
+			$char        = $line_part[ $current_content_index ];
+			$second_char = $line_part[ $current_content_index + 1 ];
+			$third_char  = $line_part[ $current_content_index + 2 ];
 
-			if ( '\\' === $char && $contentByteCount < $originalByteSize ) {
-				$unescaped = $this->getUnescapedBytesIfEscaped( substr( $linePart, $currentContentIndex, 2 ) );
-				$contentByteCount += strlen( $unescaped );
-				$currentContentIndex += 2;
+			if ( '\\' === $char && $content_byte_count < $original_byte_size ) {
+				$unescaped              = $this->get_unescaped_bytes_if_escaped( substr( $line_part, $current_content_index, 2 ) );
+				$content_byte_count    += strlen( $unescaped );
+				$current_content_index += 2;
 				continue;
 			}
 
-			if ( '\\' === $char && '"' === $secondChar && ';' === $thirdChar && $contentByteCount >= $originalByteSize ) {
-				$nextSliceIndex = $currentContentIndex + 3;
-				$contentEndIndex = $currentContentIndex - 1;
-				$nextSliceFound  = true;
+			if ( '\\' === $char && '"' === $second_char && ';' === $third_char && $content_byte_count >= $original_byte_size ) {
+				$next_slice_index  = $current_content_index + 3;
+				$content_end_index = $current_content_index - 1;
+				$next_slice_found  = true;
 				break;
 			}
 
-			if ( $contentByteCount > $originalByteSize ) {
+			if ( $content_byte_count > $original_byte_size ) {
 				throw new RuntimeException( 'faulty serialized data: calculated byte count does not match given data size' );
 			}
 
-			$contentByteCount++;
-			$currentContentIndex++;
+			++$content_byte_count;
+			++$current_content_index;
 		}
 
-		if ( ! $nextSliceFound || null === $nextSliceIndex ) {
+		if ( ! $next_slice_found || null === $next_slice_index ) {
 			throw new RuntimeException( 'faulty serialized data: end of serialized data not found' );
 		}
 
-		$content = substr( $linePart, $contentStartIndex, $contentEndIndex - $contentStartIndex + 1 );
-		$content = $this->replaceByPart( $content, $replacements );
-		$contentLength = strlen( $this->unescapeContent( $content ) );
+		$content        = substr( $line_part, $content_start_index, $content_end_index - $content_start_index + 1 );
+		$content        = $this->replace_by_part( $content, $replacements );
+		$content_length = strlen( $this->unescape_content( $content ) );
 
-		$escapedQuote            = '\\"';
-		$rebuiltSerializedString = 's:' . $contentLength . ':' . $escapedQuote . $content . $escapedQuote . ';';
+		$escaped_quote             = '\\"';
+		$rebuilt_serialized_string = 's:' . $content_length . ':' . $escaped_quote . $content . $escaped_quote . ';';
 
-		return new SerializedReplaceResult( $pre, $rebuiltSerializedString, substr( $linePart, $nextSliceIndex ) );
+		return new SerializedReplaceResult( $pre, $rebuilt_serialized_string, substr( $line_part, $next_slice_index ) );
 	}
 
 	/**
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	private function replaceByPart( string $part, array $replacements ): string {
+	private function replace_by_part( string $part, array $replacements ): string {
 		foreach ( $replacements as $replacement ) {
 			$part = str_replace( $replacement['from'], $replacement['to'], $part );
 		}
@@ -235,49 +315,49 @@ class PhpSearchReplaceHandler {
 	 *
 	 * @return array{start:int, raw_length:string, content_start:int}|null
 	 */
-	private function findSerializedPrefix( string $linePart ): ?array {
-		$length = strlen( $linePart );
+	private function find_serialized_prefix( string $line_part ): ?array {
+		$length = strlen( $line_part );
 
 		for ( $index = 0; $index < $length - 4; $index++ ) {
-			if ( 's' !== $linePart[ $index ] || ':' !== $linePart[ $index + 1 ] ) {
+			if ( 's' !== $line_part[ $index ] || ':' !== $line_part[ $index + 1 ] ) {
 				continue;
 			}
 
-			$digitStart = $index + 2;
-			if ( $digitStart >= $length || ! ctype_digit( $linePart[ $digitStart ] ) ) {
+			$digit_start = $index + 2;
+			if ( $digit_start >= $length || ! ctype_digit( $line_part[ $digit_start ] ) ) {
 				continue;
 			}
 
-			$digitEnd = $digitStart;
-			while ( $digitEnd < $length && ctype_digit( $linePart[ $digitEnd ] ) ) {
-				$digitEnd++;
+			$digit_end = $digit_start;
+			while ( $digit_end < $length && ctype_digit( $line_part[ $digit_end ] ) ) {
+				++$digit_end;
 			}
 
-			if ( $digitEnd >= $length || ':' !== $linePart[ $digitEnd ] ) {
+			if ( $digit_end >= $length || ':' !== $line_part[ $digit_end ] ) {
 				continue;
 			}
 
-			if ( $digitEnd + 2 >= $length ) {
+			if ( $digit_end + 2 >= $length ) {
 				break;
 			}
 
-			if ( '\\' !== $linePart[ $digitEnd + 1 ] || '"' !== $linePart[ $digitEnd + 2 ] ) {
+			if ( '\\' !== $line_part[ $digit_end + 1 ] || '"' !== $line_part[ $digit_end + 2 ] ) {
 				continue;
 			}
 
-			$rawLength = substr( $linePart, $digitStart, $digitEnd - $digitStart );
+			$raw_length = substr( $line_part, $digit_start, $digit_end - $digit_start );
 
 			return array(
 				'start'         => $index,
-				'raw_length'    => $rawLength,
-				'content_start' => $digitEnd + 3,
+				'raw_length'    => $raw_length,
+				'content_start' => $digit_end + 3,
 			);
 		}
 
 		return null;
 	}
 
-	private function getUnescapedBytesIfEscaped( string $pair ): string {
+	private function get_unescaped_bytes_if_escaped( string $pair ): string {
 		if ( '' === $pair || '\\' !== $pair[0] ) {
 			return $pair;
 		}
@@ -286,12 +366,12 @@ class PhpSearchReplaceHandler {
 			'\\' => '\\',
 			"'"  => "'",
 			'"'  => '"',
-			'n'   => "\n",
-			'r'   => "\r",
-			't'   => "\t",
-			'b'   => "\x08",
-			'f'   => "\f",
-			'0'   => '0',
+			'n'  => "\n",
+			'r'  => "\r",
+			't'  => "\t",
+			'b'  => "\x08",
+			'f'  => "\f",
+			'0'  => '0',
 		);
 
 		$second = $pair[1] ?? '';
@@ -303,7 +383,7 @@ class PhpSearchReplaceHandler {
 		return $pair;
 	}
 
-	private function unescapeContent( string $escaped ): string {
+	private function unescape_content( string $escaped ): string {
 		$unescaped = '';
 		$length    = strlen( $escaped );
 		$index     = 0;
@@ -311,16 +391,16 @@ class PhpSearchReplaceHandler {
 		while ( $index < $length ) {
 			if ( '\\' === $escaped[ $index ] && $index + 1 < $length ) {
 				$pair      = substr( $escaped, $index, 2 );
-				$converted = $this->getUnescapedBytesIfEscaped( $pair );
+				$converted = $this->get_unescaped_bytes_if_escaped( $pair );
 				if ( 1 === strlen( $converted ) ) {
 					$unescaped .= $converted;
-					$index += 2;
+					$index     += 2;
 					continue;
 				}
 			}
 
 			$unescaped .= $escaped[ $index ];
-			$index++;
+			++$index;
 		}
 
 		return $unescaped;

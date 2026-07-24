@@ -2,8 +2,8 @@
 
 namespace WP_CLI;
 
-use PhpSearchReplace\PhpSearchReplaceHandler;
 use RuntimeException;
+use WP_CLI\Search_Replace_File\PhpSearchReplaceHandler;
 
 /**
  * Performs serialization-aware search and replace on SQL dump files.
@@ -31,6 +31,9 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 	 * <output-file>
 	 * : Path to write the modified SQL dump file.
 	 *
+	 * [--force]
+	 * : Overwrite an existing output file.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     # Replace a domain name in a SQL dump.
@@ -52,17 +55,23 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 		$new         = $args[1];
 		$input_file  = $args[2];
 		$output_file = $args[3];
+		$force       = isset( $assoc_args['force'] );
+		$handler     = new PhpSearchReplaceHandler();
 
 		if ( '' === $old ) {
 			\WP_CLI::error( '<old> must not be empty.' );
 		}
 
-		if ( ! file_exists( $input_file ) || ! is_readable( $input_file ) ) {
-			\WP_CLI::error( sprintf( "Input file '%s' does not exist or is not readable.", $input_file ) );
+		if ( ! is_file( $input_file ) || ! is_readable( $input_file ) ) {
+			\WP_CLI::error( sprintf( "Input file '%s' does not exist, is not a file, or is not readable.", $input_file ) );
 		}
 
-		if ( $input_file === $output_file ) {
+		if ( $handler->paths_refer_to_same_file( $input_file, $output_file ) ) {
 			\WP_CLI::error( 'The input and output files must be different.' );
+		}
+
+		if ( is_dir( $output_file ) ) {
+			\WP_CLI::error( sprintf( "Output path '%s' is a directory.", $output_file ) );
 		}
 
 		$output_dir = dirname( $output_file );
@@ -70,8 +79,13 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 			\WP_CLI::error( sprintf( "Output directory '%s' does not exist.", $output_dir ) );
 		}
 
+		$output_exists = file_exists( $output_file ) || is_link( $output_file );
+		if ( $output_exists && ! $force ) {
+			\WP_CLI::error( sprintf( "Output file '%s' already exists. Use --force to overwrite it.", $output_file ) );
+		}
+
 		$output_dir_writable = true;
-		if ( file_exists( $output_file ) ) {
+		if ( $output_exists ) {
 			if ( ! is_writable( $output_file ) ) {
 				$output_dir_writable = false;
 			}
@@ -83,8 +97,7 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 		}
 
 		try {
-			$handler = new PhpSearchReplaceHandler();
-			$handler->replaceInFile(
+			$handler->replace_in_file(
 				$input_file,
 				$output_file,
 				array(

@@ -23,7 +23,7 @@ The command will adapt the existing PHP port documented in `docs/references/php-
 The reference implementation exposes this reusable API:
 
 ```php
-$handler->replaceInFile(
+$handler->replace_in_file(
 	$input_path,
 	$output_path,
 	array(
@@ -116,7 +116,7 @@ These are deferred to future iterations:
 
 ### Completed
 
-1. Ported reference handler to `src/PhpSearchReplaceHandler.php` (PHP 7.2-safe, under original `PhpSearchReplace` namespace).
+1. Ported reference handler to `src/PhpSearchReplaceHandler.php` (PHP 7.2-safe, under the package-owned `WP_CLI\Search_Replace_File` namespace).
 2. Added `src/SerializedReplaceResult.php` without PHP 8-only syntax.
 3. Added PHPUnit tests at `tests/PhpSearchReplaceHandlerTest.php` with all 12 serialized fixture pairs.
 4. Added minimum Behat scaffolding at `features/search-replace-file.feature`.
@@ -150,7 +150,7 @@ Handler tests should cover:
 - Escaped serialized delimiters.
 - Empty replacements returning original input.
 - Invalid replacement array shape raising an exception.
-- `replaceInFile()` processing an entire file.
+- `replace_in_file()` processing an entire file.
 
 ## Decisions (Locked)
 

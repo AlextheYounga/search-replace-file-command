@@ -1,10 +1,8 @@
 <?php
 
-// phpcs:ignoreFile
-
 declare( strict_types=1 );
 
-namespace PhpSearchReplace;
+namespace WP_CLI\Search_Replace_File;
 
 class SerializedReplaceResult {
 
@@ -16,16 +14,16 @@ class SerializedReplaceResult {
 	/**
 	 * @var string
 	 */
-	public $serializedPortion;
+	public $serialized_portion;
 
 	/**
 	 * @var string
 	 */
 	public $post;
 
-	public function __construct( $pre, $serializedPortion, $post ) {
+	public function __construct( $pre, $serialized_portion, $post ) {
 		$this->pre                = $pre;
-		$this->serializedPortion  = $serializedPortion;
+		$this->serialized_portion = $serialized_portion;
 		$this->post               = $post;
 	}
 }

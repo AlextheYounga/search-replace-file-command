@@ -1,14 +1,12 @@
 {
-    "name": "wp-cli/search-replace-file-command",
+    "name": "alextheyounga/search-replace-file-command",
     "type": "wp-cli-package",
-    "description": "Scaffold for a file search/replace WP-CLI command.",
-    "homepage": "https://github.com/wp-cli/search-replace-file-command",
+    "description": "Performs serialization-aware search and replace on WordPress SQL dump files.",
+    "homepage": "https://github.com/AlextheYounga/search-replace-file-command",
     "license": "MIT",
     "authors": [
         {
-            "name": "Daniel Bachhuber",
-            "email": "daniel@runcommand.io",
-            "homepage": "https://runcommand.io"
+            "name": "Alex Younger"
         }
     ],
     "require": {
@@ -34,7 +32,7 @@
         "branch-alias": {
             "dev-main": "2.x-dev"
         },
-        "bundled": true,
+        "bundled": false,
         "commands": [
             "search-replace-file"
         ]
@@ -67,6 +65,6 @@
         ]
     },
     "support": {
-        "issues": "https://github.com/wp-cli/search-replace-file-command/issues"
+        "issues": "https://github.com/AlextheYounga/search-replace-file-command/issues"
     }
 }

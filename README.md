@@ -25,7 +25,7 @@ wp help search-replace-file
 ## Usage
 
 ```bash
-wp search-replace-file <old> <new> <input-file> <output-file>
+wp search-replace-file <old> <new> <input-file> <output-file> [--force]
 ```
 
 The command performs a literal, case-sensitive replacement throughout the dump.
@@ -49,6 +49,12 @@ The readable SQL dump to process.
 #### `<output-file>`
 
 The path where the transformed dump will be written. The input and output paths must be different.
+
+### Options
+
+#### `--force`
+
+Overwrite an existing output file. Without this flag, the command refuses to replace an existing file.
 
 ## Examples
 
@@ -102,9 +108,11 @@ The command operates directly on files and does not require a live WordPress dat
 
 ## Safety
 
-The input dump is not intentionally modified. A separate output path is required.
+The input dump is not modified, including when the output path is a relative alias, symbolic link, or hard link to the input. A separate output path is required.
 
-The current development version may overwrite an existing file at the output path. Use a new output filename and retain the original dump until the transformed file has been tested successfully.
+The command writes to a temporary file in the destination directory and only replaces the requested output after processing completes successfully. Existing output requires `--force`; if parsing or writing fails, the previous output is preserved.
+
+Malformed serialized data causes the command to stop with the input line number instead of silently skipping replacements.
 
 Always inspect or test the resulting dump before importing it into a production database.
 
