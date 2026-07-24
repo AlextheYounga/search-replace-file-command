@@ -51,21 +51,44 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 	 * @return void
 	 */
 	public function __invoke( $args, $assoc_args ) {
-		$old         = $args[0];
-		$new         = $args[1];
+		$search      = $args[0];
+		$replacement = $args[1];
 		$input_file  = $args[2];
 		$output_file = $args[3];
 		$force       = isset( $assoc_args['force'] );
 		$handler     = new PhpSearchReplaceHandler();
 
-		if ( '' === $old ) {
+		if ( '' === $search ) {
 			\WP_CLI::error( '<old> must not be empty.' );
 		}
 
+		$this->validate_input_file( $input_file );
+		$this->validate_output_file( $handler, $input_file, $output_file, $force );
+
+		try {
+			$handler->replace_in_file(
+				$input_file,
+				$output_file,
+				array(
+					array(
+						'from' => $search,
+						'to'   => $replacement,
+					),
+				)
+			);
+			\WP_CLI::success( sprintf( "Replaced '%s' with '%s'.", $search, $replacement ) );
+		} catch ( RuntimeException $e ) {
+			\WP_CLI::error( $e->getMessage() );
+		}
+	}
+
+	private function validate_input_file( string $input_file ): void {
 		if ( ! is_file( $input_file ) || ! is_readable( $input_file ) ) {
 			\WP_CLI::error( sprintf( "Input file '%s' does not exist, is not a file, or is not readable.", $input_file ) );
 		}
+	}
 
+	private function validate_output_file( PhpSearchReplaceHandler $handler, string $input_file, string $output_file, bool $force ): void {
 		if ( $handler->paths_refer_to_same_file( $input_file, $output_file ) ) {
 			\WP_CLI::error( 'The input and output files must be different.' );
 		}
@@ -74,9 +97,9 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 			\WP_CLI::error( sprintf( "Output path '%s' is a directory.", $output_file ) );
 		}
 
-		$output_dir = dirname( $output_file );
-		if ( '' !== $output_dir && ! is_dir( $output_dir ) ) {
-			\WP_CLI::error( sprintf( "Output directory '%s' does not exist.", $output_dir ) );
+		$output_directory = dirname( $output_file );
+		if ( ! is_dir( $output_directory ) ) {
+			\WP_CLI::error( sprintf( "Output directory '%s' does not exist.", $output_directory ) );
 		}
 
 		$output_exists = file_exists( $output_file ) || is_link( $output_file );
@@ -84,32 +107,16 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 			\WP_CLI::error( sprintf( "Output file '%s' already exists. Use --force to overwrite it.", $output_file ) );
 		}
 
-		$output_dir_writable = true;
-		if ( $output_exists ) {
-			if ( ! is_writable( $output_file ) ) {
-				$output_dir_writable = false;
-			}
-		} elseif ( '' !== $output_dir && ! is_writable( $output_dir ) ) {
-			$output_dir_writable = false;
-		}
-		if ( ! $output_dir_writable ) {
+		if ( ! $this->is_writable_destination( $output_file, $output_directory, $output_exists ) ) {
 			\WP_CLI::error( sprintf( "Output file '%s' is not writable.", $output_file ) );
 		}
+	}
 
-		try {
-			$handler->replace_in_file(
-				$input_file,
-				$output_file,
-				array(
-					array(
-						'from' => $old,
-						'to'   => $new,
-					),
-				)
-			);
-			\WP_CLI::success( sprintf( "Replaced '%s' with '%s'.", $old, $new ) );
-		} catch ( RuntimeException $e ) {
-			\WP_CLI::error( $e->getMessage() );
+	private function is_writable_destination( string $output_file, string $output_directory, bool $output_exists ): bool {
+		if ( $output_exists ) {
+			return is_writable( $output_file );
 		}
+
+		return is_writable( $output_directory );
 	}
 }

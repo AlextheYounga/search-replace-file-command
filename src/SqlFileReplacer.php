@@ -9,8 +9,9 @@ use RuntimeException;
 /**
  * Reads an SQL file, delegates line processing, and commits output safely.
  */
-class SqlFileReplacer {
+final class SqlFileReplacer {
 
+	/** @var SqlLineReplacer */
 	private $line_replacer;
 
 	public function __construct( ?SqlLineReplacer $line_replacer = null ) {
@@ -20,18 +21,20 @@ class SqlFileReplacer {
 	/**
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	public function replace( string $input_path, string $output_path, array $replacements ): void {
+	public function replace_file( string $input_path, string $output_path, array $replacements ): void {
 		if ( $this->paths_refer_to_same_file( $input_path, $output_path ) ) {
 			throw new RuntimeException( 'The input and output files must be different.' );
 		}
 
-		$input          = $this->open_input( $input_path );
-		$temporary_path = $this->create_temporary_path( $input, $output_path );
-		$output         = $this->open_output( $input, $temporary_path, $output_path );
+		$input          = null;
+		$output         = null;
+		$temporary_path = $this->create_temporary_path( $output_path );
 
 		try {
+			$input  = $this->open_input( $input_path );
+			$output = $this->open_output( $temporary_path, $output_path );
 			$this->copy_and_replace( $input, $output, $input_path, $output_path, $replacements );
-			$this->commit( $input, $output, $temporary_path, $output_path );
+			$this->commit( $output, $temporary_path, $output_path );
 			$temporary_path = null;
 		} finally {
 			$this->close( $input );
@@ -58,19 +61,16 @@ class SqlFileReplacer {
 	}
 
 	/**
-	 * @param resource $input
 	 * @return string
 	 */
-	private function create_temporary_path( $input, string $output_path ) {
+	private function create_temporary_path( string $output_path ): string {
 		$output_directory = realpath( dirname( $output_path ) );
 		if ( false === $output_directory ) {
-			$this->close( $input );
 			throw new RuntimeException( sprintf( 'Unable to access the output directory for "%s".', $output_path ) );
 		}
 
 		$temporary_path = tempnam( $output_directory, '.search-replace-file-' );
 		if ( false === $temporary_path ) {
-			$this->close( $input );
 			throw new RuntimeException( sprintf( 'Unable to create a temporary file for "%s".', $output_path ) );
 		}
 
@@ -90,13 +90,11 @@ class SqlFileReplacer {
 	}
 
 	/**
-	 * @param resource $input
 	 * @return resource
 	 */
-	private function open_output( $input, string $temporary_path, string $output_path ) {
+	private function open_output( string $temporary_path, string $output_path ) {
 		$output = @fopen( $temporary_path, 'wb' );
 		if ( false === $output ) {
-			$this->close( $input );
 			$this->remove_temporary_file( $temporary_path );
 			throw new RuntimeException( sprintf( 'Unable to create a temporary file for "%s".', $output_path ) );
 		}
@@ -119,7 +117,7 @@ class SqlFileReplacer {
 
 			++$line_number;
 			try {
-				$line = $this->line_replacer->replace( $line, $replacements );
+				$line = $this->line_replacer->replace_line( $line, $replacements );
 			} catch ( RuntimeException $exception ) {
 				throw new RuntimeException(
 					sprintf( 'Unable to safely process serialized data in "%s" at line %d. %s', $input_path, $line_number, $exception->getMessage() ),
@@ -137,16 +135,14 @@ class SqlFileReplacer {
 	}
 
 	/**
-	 * @param resource $input
 	 * @param resource $output
 	 */
-	private function commit( $input, $output, string $temporary_path, string $output_path ): void {
+	private function commit( $output, string $temporary_path, string $output_path ): void {
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- The failure is converted to a command error.
 		if ( ! @fflush( $output ) ) {
 			throw new RuntimeException( sprintf( 'Unable to write to "%s".', $output_path ) );
 		}
 
-		$this->close( $input );
 		$this->close( $output );
 
 		if ( ! @rename( $temporary_path, $output_path ) ) {

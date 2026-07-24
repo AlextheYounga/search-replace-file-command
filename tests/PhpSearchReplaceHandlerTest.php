@@ -229,31 +229,4 @@ class PhpSearchReplaceHandlerTest extends TestCase
         }
     }
 
-    private function extractSqlFixture(string $zipPath): string
-    {
-        if (!is_file($zipPath)) {
-            throw new RuntimeException(sprintf('Fixture "%s" does not exist.', $zipPath));
-        }
-
-        $zip = new \ZipArchive();
-        if ($zip->open($zipPath) !== true) {
-            throw new RuntimeException(sprintf('Unable to open fixture "%s".', $zipPath));
-        }
-
-        $contents = $zip->getFromIndex(0);
-        $zip->close();
-
-        if ($contents === false) {
-            throw new RuntimeException(sprintf('Unable to read contents of fixture "%s".', $zipPath));
-        }
-
-        $tempPath = tempnam(sys_get_temp_dir(), 'sql-fixture-');
-        if ($tempPath === false) {
-            throw new RuntimeException('Unable to create temporary fixture file.');
-        }
-
-        file_put_contents($tempPath, $contents);
-
-        return $tempPath;
-    }
 }

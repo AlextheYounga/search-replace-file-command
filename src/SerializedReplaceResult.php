@@ -4,26 +4,26 @@ declare( strict_types=1 );
 
 namespace WP_CLI\Search_Replace_File;
 
-class SerializedReplaceResult {
+final class SerializedReplaceResult {
 
 	/**
 	 * @var string
 	 */
-	public $pre;
+	public $before;
 
 	/**
 	 * @var string
 	 */
-	public $serialized_portion;
+	public $serialized;
 
 	/**
 	 * @var string
 	 */
-	public $post;
+	public $after;
 
-	public function __construct( $pre, $serialized_portion, $post ) {
-		$this->pre                = $pre;
-		$this->serialized_portion = $serialized_portion;
-		$this->post               = $post;
+	public function __construct( string $before, string $serialized, string $after ) {
+		$this->before     = $before;
+		$this->serialized = $serialized;
+		$this->after      = $after;
 	}
 }

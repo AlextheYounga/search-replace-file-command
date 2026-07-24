@@ -9,29 +9,29 @@ use RuntimeException;
 /**
  * Finds and rebuilds serialized PHP strings embedded in SQL text.
  */
-class SerializedStringParser {
+final class SerializedStringParser {
 
 	/**
 	 * Replace serialized data at the start of a text chunk.
 	 *
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	public function replace( string $line_part, array $replacements ): SerializedReplaceResult {
+	public function replace_serialized( string $line_part, array $replacements ): SerializedReplaceResult {
 		$prefix = $this->find_prefix( $line_part );
 
 		if ( null === $prefix ) {
-			return new SerializedReplaceResult( $this->replace_part( $line_part, $replacements ), '', '' );
+			return new SerializedReplaceResult( $this->replace_text( $line_part, $replacements ), '', '' );
 		}
 
-		$pre            = $this->replace_part( substr( $line_part, 0, $prefix['start'] ), $replacements );
+		$before         = $this->replace_text( substr( $line_part, 0, $prefix['start'] ), $replacements );
 		$content_data   = $this->read_content( $line_part, $prefix );
-		$content        = $this->replace_part( $content_data['value'], $replacements );
+		$content        = $this->replace_text( $content_data['value'], $replacements );
 		$content_length = strlen( $this->unescape_content( $content ) );
 
 		$quote      = '\\"';
 		$serialized = 's:' . $content_length . ':' . $quote . $content . $quote . ';';
 
-		return new SerializedReplaceResult( $pre, $serialized, substr( $line_part, $content_data['next_index'] ) );
+		return new SerializedReplaceResult( $before, $serialized, substr( $line_part, $content_data['next_index'] ) );
 	}
 
 	/**
@@ -119,7 +119,7 @@ class SerializedStringParser {
 	/**
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	private function replace_part( string $part, array $replacements ): string {
+	private function replace_text( string $part, array $replacements ): string {
 		foreach ( $replacements as $replacement ) {
 			$part = str_replace( $replacement['from'], $replacement['to'], $part );
 		}

@@ -9,8 +9,9 @@ use RuntimeException;
 /**
  * Applies replacements to SQL text while preserving serialized string lengths.
  */
-class SqlLineReplacer {
+final class SqlLineReplacer {
 
+	/** @var SerializedStringParser */
 	private $serialized_parser;
 
 	public function __construct( ?SerializedStringParser $serialized_parser = null ) {
@@ -20,7 +21,7 @@ class SqlLineReplacer {
 	/**
 	 * @param array<int, array{from:string,to:string}> $replacements
 	 */
-	public function replace( string $line, array $replacements ): string {
+	public function replace_line( string $line, array $replacements ): string {
 		if ( '' === $line ) {
 			return '';
 		}
@@ -34,9 +35,9 @@ class SqlLineReplacer {
 		$result    = '';
 
 		while ( '' !== $remaining ) {
-			$part      = $this->serialized_parser->replace( $remaining, $replacements );
-			$result   .= $part->pre . $part->serialized_portion;
-			$remaining = $part->post;
+			$replacement_part = $this->serialized_parser->replace_serialized( $remaining, $replacements );
+			$result          .= $replacement_part->before . $replacement_part->serialized;
+			$remaining        = $replacement_part->after;
 		}
 
 		return $result;
