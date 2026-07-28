@@ -44,23 +44,23 @@ class PhpSearchReplaceHandlerTest extends TestCase
     {
         $base = __DIR__ . '/Fixtures/serialized';
         $doubleEncodedFrom = <<<'TXT'
-        http:\\/\\/example\\.com
-        TXT;
+http:\\/\\/example\\.com
+TXT;
         $doubleEncodedTo = <<<'TXT'
-        http:\\/\\/example2\\.com
-        TXT;
+http:\\/\\/example2\\.com
+TXT;
         $doubleEncodedSerializedFrom = <<<'TXT'
-        \\s=\\shttp_get(\'http:\\/\\/example\\.com
-        TXT;
+\\s=\\shttp_get(\'http:\\/\\/example\\.com
+TXT;
         $doubleEncodedSerializedTo = <<<'TXT'
-        \\s=\\shttp_get(\'http:\\/\\/example2\\.com
-        TXT;
+\\s=\\shttp_get(\'http:\\/\\/example2\\.com
+TXT;
         $heavyEscapingFrom = <<<'TXT'
-        \\c\\d\\e
-        TXT;
+\\c\\d\\e
+TXT;
         $heavyEscapingTo = <<<'TXT'
-        \\x
-        TXT;
+\\x
+TXT;
 
         return [
             'http to https' => [
@@ -206,10 +206,10 @@ class PhpSearchReplaceHandlerTest extends TestCase
         self::assertNotFalse($output);
 
         $fixture = <<<'SQL'
-        s:21:\"http://automattic.com\";
-        http://example.com
+s:21:\"http://automattic.com\";
+http://example.com
 
-        SQL;
+SQL;
 
         file_put_contents($input, $fixture);
 
@@ -221,10 +221,10 @@ class PhpSearchReplaceHandlerTest extends TestCase
         $result = file_get_contents($output);
 
         $expected = <<<'SQL'
-        s:22:\"https://automattic.com\";
-        https://example.com
+s:22:\"https://automattic.com\";
+https://example.com
 
-        SQL;
+SQL;
 
         self::assertSame($expected, $result);
 
