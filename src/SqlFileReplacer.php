@@ -26,10 +26,10 @@ final class SqlFileReplacer {
 			throw new RuntimeException( 'The input and output files must be different.' );
 		}
 
-		$input               = null;
-		$output              = null;
-		$existing_mode       = file_exists( $output_path ) ? ( fileperms( $output_path ) & 0777 ) : null;
-		$temporary_path      = $this->create_temporary_path( $output_path );
+		$input          = null;
+		$output         = null;
+		$existing_mode  = file_exists( $output_path ) ? ( fileperms( $output_path ) & 0777 ) : null;
+		$temporary_path = $this->create_temporary_path( $output_path );
 
 		try {
 			$input  = $this->open_input( $input_path );
