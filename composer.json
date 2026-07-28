@@ -56,12 +56,16 @@
         "phpcbf": "run-phpcbf-cleanup",
         "phpunit": "run-php-unit-tests",
         "prepare-tests": "install-package-tests",
+        "spellcheck": "typos",
+        "gherkin-lint": "npx --no-install gherkin-lint -c .gherkin-lintrc",
         "test": [
             "@lint",
             "@phpcs",
             "@phpstan",
             "@phpunit",
-            "@behat"
+            "@behat",
+            "@spellcheck",
+            "@gherkin-lint"
         ]
     },
     "support": {
