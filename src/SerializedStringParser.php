@@ -63,8 +63,12 @@ final class SerializedStringParser {
 					throw new RuntimeException( 'faulty serialized data: calculated byte count does not match given data size' );
 				}
 
+				$value = 0 === $original_length
+					? ''
+					: substr( $line_part, $prefix['content_start'], $end_index - $prefix['content_start'] + 1 );
+
 				return array(
-					'value'      => substr( $line_part, $prefix['content_start'], $end_index - $prefix['content_start'] + 1 ),
+					'value'      => $value,
 					'next_index' => $index + 3,
 				);
 			}
