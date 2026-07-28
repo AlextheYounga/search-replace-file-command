@@ -113,10 +113,15 @@ class Search_Replace_File_Command extends \WP_CLI_Command {
 	}
 
 	private function is_writable_destination( string $output_file, string $output_directory, bool $output_exists ): bool {
-		if ( $output_exists ) {
+		if ( ! is_writable( $output_directory ) ) {
+			return false;
+		}
+
+		// On Windows, rename() requires the destination file to be writable when it already exists.
+		if ( $output_exists && 'Windows' === PHP_OS_FAMILY ) {
 			return is_writable( $output_file );
 		}
 
-		return is_writable( $output_directory );
+		return true;
 	}
 }

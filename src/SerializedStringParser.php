@@ -58,14 +58,18 @@ final class SerializedStringParser {
 				continue;
 			}
 
-			if ( '\\";' === substr( $line_part, $index, 3 ) && $byte_count >= $original_length ) {
+			if ( '\\";' === substr( $line_part, $index, 3 ) ) {
+				if ( $byte_count !== $original_length ) {
+					throw new RuntimeException( 'faulty serialized data: calculated byte count does not match given data size' );
+				}
+
 				return array(
 					'value'      => substr( $line_part, $prefix['content_start'], $end_index - $prefix['content_start'] + 1 ),
 					'next_index' => $index + 3,
 				);
 			}
 
-			if ( $byte_count > $original_length ) {
+			if ( $byte_count >= $original_length ) {
 				throw new RuntimeException( 'faulty serialized data: calculated byte count does not match given data size' );
 			}
 
@@ -161,10 +165,18 @@ final class SerializedStringParser {
 			't'  => "\t",
 			'b'  => "\x08",
 			'f'  => "\x0c",
-			'0'  => '0',
+			'0'  => "\x00",
+			'Z'  => "\x1a",
+			'%'  => '%',
+			'_'  => '_',
 		);
 
 		$second = $pair[1] ?? '';
-		return '' !== $second && isset( $map[ $second ] ) ? $map[ $second ] : $pair;
+
+		if ( '' === $second ) {
+			return $pair;
+		}
+
+		return isset( $map[ $second ] ) ? $map[ $second ] : $second;
 	}
 }

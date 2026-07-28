@@ -169,6 +169,34 @@ class PhpSearchReplaceHandlerTest extends TestCase
         self::assertSame($line, $this->handler->process_line($line, [['from' => 'missing', 'to' => 'replacement']]));
     }
 
+    public function testProcessLineRejectsOneByteOverrun(): void
+    {
+        // s:3 declares 3 bytes but content is 4 bytes — must not be silently corrected
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('faulty serialized data');
+        $this->handler->process_line('s:3:\"abcd\";', [['from' => 'a', 'to' => 'a']]);
+    }
+
+    public function testProcessLineHandlesEmptySerializedString(): void
+    {
+        $line = 's:0:\"\";';
+        self::assertSame($line, $this->handler->process_line($line, [['from' => 'missing', 'to' => 'replacement']]));
+    }
+
+    public function testProcessLineHandlesMySqlZEscape(): void
+    {
+        // \Z is MySQL's escape for ASCII 26 (one byte), so s:3 is correct for a\Zb
+        $line = 's:3:\"a\Zb\";';
+        self::assertSame($line, $this->handler->process_line($line, [['from' => 'missing', 'to' => 'replacement']]));
+    }
+
+    public function testProcessLineHandlesMySqlUnknownEscape(): void
+    {
+        // MySQL treats \q as q (one byte, not two), so s:1 is correct
+        $line = 's:1:\"\q\";';
+        self::assertSame($line, $this->handler->process_line($line, [['from' => 'missing', 'to' => 'replacement']]));
+    }
+
     public function testReplaceInFileProcessesEntireContents(): void
     {
         $input = tempnam(sys_get_temp_dir(), 'sql-src-');
