@@ -52,16 +52,6 @@ final class SqlFileReplacer {
 			return false;
 		}
 
-		if ( is_link( $output_path ) ) {
-			$link_target = readlink( $output_path );
-			if ( false !== $link_target ) {
-				$resolved_link_target = realpath( dirname( $output_path ) . DIRECTORY_SEPARATOR . $link_target );
-				if ( false !== $resolved_link_target && $input_real_path === $resolved_link_target ) {
-					return true;
-				}
-			}
-		}
-
 		if ( false !== $output_real_path ) {
 			return $input_real_path === $output_real_path || $this->same_inode( $input_path, $output_path );
 		}

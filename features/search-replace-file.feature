@@ -82,6 +82,8 @@ Feature: Search and replace strings in SQL dump files
       """
     And the return code should be 1
 
+  # Creating symbolic links is not reliably supported by Windows CI runners.
+  @skip-windows
   Scenario: Error when output file is a symlink to the input
     Given an empty directory
     And a dump.sql file:
