@@ -70,7 +70,8 @@ final class SqlFileReplacer {
 			throw new RuntimeException( sprintf( 'Unable to access the output directory for "%s".', $output_path ) );
 		}
 
-		$temporary_path = tempnam( $output_directory, '.search-replace-file-' );
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- tempnam() warns when it falls back to the system temporary directory.
+		$temporary_path = @tempnam( $output_directory, '.search-replace-file-' );
 		if ( false === $temporary_path ) {
 			throw new RuntimeException( sprintf( 'Unable to create a temporary file for "%s".', $output_path ) );
 		}
