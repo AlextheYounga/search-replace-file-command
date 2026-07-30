@@ -25,7 +25,12 @@ wp help search-replace-file
 ## Usage
 
 ```bash
-wp search-replace-file <old> <new> <input-file> <output-file> [--force]
+wp search-replace-file <old> <new> <input-file> <output-file>
+```
+
+Example:
+```bash
+wp search-replace-file example.com example.test dump.sql dump-updated.sql
 ```
 
 The command performs a literal, case-sensitive replacement throughout the dump.
